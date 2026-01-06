@@ -1,4 +1,5 @@
 """Bank balance checking tool."""
+from galileo import log
 
 BANK_BALANCE_SCHEMA = {
     "type": "function",
@@ -17,7 +18,7 @@ BANK_BALANCE_SCHEMA = {
     }
 }
 
-
+@log(span_type="tool", name="bank_balance_function")
 def check_bank_balance(account_number: str = None) -> dict:
     """Check the bank balance for an account."""
     return {

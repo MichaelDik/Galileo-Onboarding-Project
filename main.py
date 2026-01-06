@@ -9,7 +9,7 @@ from tools import TOOLS, TOOL_FUNCTIONS
 # Load environment variables from the .env file
 load_dotenv()
 
-# Set the project and Log stream, these are created if they don't exist.
+# Set the project and Log stream these are created if they don't exist.
 # You can also set these using the GALILEO_PROJECT and GALILEO_LOG_STREAM
 # environment variables.
 galileo_context.init(project="Financial Advisor Agent",

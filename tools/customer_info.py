@@ -1,4 +1,5 @@
 """Customer information tool."""
+from galileo import log
 
 CUSTOMER_INFO_SCHEMA = {
     "type": "function",
@@ -17,7 +18,7 @@ CUSTOMER_INFO_SCHEMA = {
     }
 }
 
-
+@log(span_type="tool", name="customer_info_function")
 def get_customer_info(customer_id: str = None) -> dict:
     """Get customer information for a given customer ID or name."""
     customer_id = customer_id or "CUST-001"

@@ -1,4 +1,5 @@
 """Stock advice tool."""
+from galileo import log
 
 STOCK_ADVICE_SCHEMA = {
     "type": "function",
@@ -17,7 +18,7 @@ STOCK_ADVICE_SCHEMA = {
     }
 }
 
-
+@log(span_type="tool", name="stock_advice_function")
 def get_stock_advice(symbol: str = None) -> dict:
     """Get stock advice for a given stock symbol."""
     symbol = symbol or "AAPL"
