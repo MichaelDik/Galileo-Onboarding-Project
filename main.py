@@ -1,27 +1,102 @@
+from galileo import galileo_context
+from galileo.openai import openai
+from galileo.config import GalileoPythonConfig
+from dotenv import load_dotenv
 import sys
-import os
-sys.stdout.reconfigure(encoding="utf-8")
-from openai import OpenAI
+import json
+from tools import TOOLS, TOOL_FUNCTIONS
 
-# Initialize client - API key should be in OPENAI_API_KEY environment variable
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    print("Error: OPENAI_API_KEY environment variable is not set.")
-    print("Please set it with: export OPENAI_API_KEY='your-api-key'")
-    sys.exit(1)
+# Load environment variables from the .env file
+load_dotenv()
 
-client = OpenAI(api_key=api_key)
+# Set the project and Log stream, these are created if they don't exist.
+# You can also set these using the GALILEO_PROJECT and GALILEO_LOG_STREAM
+# environment variables.
+galileo_context.init(project="Financial Advisor Agent",
+                     log_stream="dev_main_ls")
 
-def run():
-    response = client.responses.create(
+# Initialize the Galileo OpenAI client wrapper
+client = openai.OpenAI()
+
+# Define a system prompt with guidance
+system_prompt = f"""
+
+You are a helpful financial advisor agent to help the user make investment decisions. 
+
+You have access to tools for checking bank balances, getting stock advice, and retrieving customer information.
+Use these tools when appropriate to help the user.
+
+"""
+
+# Define 3 hardcoded user inputs
+user_prompts = [
+    "Is AAPL a good Buy?",
+    "What's my bank balance?",
+    "What's the customer info for CUST-001?"
+]
+
+# Process each user prompt
+for i, user_prompt in enumerate(user_prompts, 1):
+    print(f"\n{'='*60}")
+    print(f"Query {i}: {user_prompt}")
+    print(f"{'='*60}\n")
+    
+    # Initialize messages for this query
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+    
+    # Send a request to the LLM with tools
+    response = client.chat.completions.create(
         model="gpt-4o-mini",
-        input="How are you today"
+        messages=messages,
+        tools=TOOLS,
+        tool_choice="auto"
     )
     
-    print(response.output_text)
+    # Handle tool calls if any
+    message = response.choices[0].message
+    if message.tool_calls:
+        messages.append(message)
+        
+        # Execute tool calls
+        for tool_call in message.tool_calls:
+            function_name = tool_call.function.name
+            function_args = json.loads(tool_call.function.arguments)
+            
+            # Call the appropriate function from the tool registry
+            if function_name in TOOL_FUNCTIONS:
+                function_response = TOOL_FUNCTIONS[function_name](**function_args)
+            else:
+                function_response = {"error": "Unknown function"}
+            
+            # Add tool response to messages
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(function_response)
+            })
+        
+        # Get final response from LLM with tool results
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            tools=TOOLS,
+            tool_choice="auto"
+        )
+    
+    # Print the response
+    print(response.choices[0].message.content.strip())
+    print()
 
-if __name__ == "__main__":
-    run()
+# # Show Galileo information after the response
+# config = GalileoPythonConfig.get()
+# logger = galileo_context.get_logger_instance()
+# project_url = f"{config.console_url}project/{logger.project_id}"
+# log_stream_url = f"{project_url}/log-streams/{logger.log_stream_id}"
 
-
-
+# print()
+# print("🚀 GALILEO LOG INFORMATION:")
+# print(f"🔗 Project   : {project_url}")
+# print(f"📝 Log Stream: {log_stream_url}")
